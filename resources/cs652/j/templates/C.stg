@@ -1,0 +1,122 @@
+CFile(f, classes, main) ::= <<
+#include \<stdio.h>
+#include \<stdlib.h>
+
+typedef struct {
+    char *name;
+    int size;
+    void (*(*_vtable)[])();
+} metadata;
+
+typedef struct {
+    metadata *clazz;
+} object;
+
+object *alloc(metadata *clazz) {
+    object *p = malloc(clazz->size);
+    p->clazz = clazz;
+    return p;
+}
+
+<classes:{class|<class>}; separator="\n">
+
+<main>
+>>
+
+ClassDef(class, fields, methods, vtable) ::= <<
+// D e f i n e  C l a s s  <class.name>
+typedef struct {
+    metadata *clazz;
+    <fields:{field|<field>;}; separator="\n">
+} <class.name>;
+
+//#define <class.name>_<funcName>_SLOT num;
+//need using vable here
+<vtable:{v|<v>};separator="\n">
+
+
+//float T_f(T *this){}   method
+<methods:{method|<method>};separator="\n">
+
+//void (*Animal_vtable[])() = {
+//    (void (*)())&Animal_foo,
+//    (void (*)())&Animal_getID
+//};
+
+void (*<class.name>_vtable[])() = {
+    <{funs|(void (*)())&<class.name>_<funcName>};separator=",\n">
+}
+
+//metadata T_metadata = {"T", sizeof(T), &T_vtable};
+
+metadata <class.name>_metadata = {"<class.name>", sizeof(<class.name>), &<class.name>_vtable};
+>>
+
+VTable(v,className,funcName) ::= <<
+    #define <class.name>_<funcName>_SLOT <v.slot>
+>>
+//void Coder_raise(Coder *this, float v)
+MethodDef(m,funcName,returnType,args,body) ::= <<
+    <returnType> <funcName> (<args:{arg|<arg>}; separator=", ">){
+    <body>
+}
+>>
+
+//int main(int argc, char *argv[])
+MainMethod(main,funcName,returnType,args,body) ::= <<
+int main(int argc, char *argv[]){
+    <body>
+}
+>>
+
+//instrs?
+Block(block, locals, instrs) ::= <<{
+    <locals:{local|<local>}>
+    <instrs:{instr|<instr>}; separator = "\n">
+}
+>>
+
+VarDef(var, type)   ::= "<type> <var.name>"
+
+FuncName(f)         ::= "<f.name>"
+
+ObjectTypeSpec(o)   ::= "<o.name>"
+PrimitiveTypeSpec(p)::= "<p.name>"
+
+AssignStat(a,left,right) ::= "<assoc>=<right>"
+PrintStringStat(p)  ::= "printf(p.content);"
+//'printf' '(' STRING_TYPE (','args)* ')' ';'
+PrintStat(p,args)   ::= <<printf(<p.name>,<args:{arg|<arg>};separator=", ">);>>
+CallStat(c,call)    ::= "<call>;"
+CREATOR_LABLE(cl)      ::= "(<cl.name> *) alloc(&<cl.name>_metadata)"
+ReturnStat(r,expr)  ::= "return <expr>;"
+WhileStat(w,condition, stat) ::= "while ( <condition> ) <stat>"
+IfStat(i,condition, stat) ::= "if( <condition> )<stat>"
+IfElseStat(i,condition, stat, elseStat) ::= <<
+    if( <condition> ) <stat>
+    else <elseStat>
+>>
+
+NULL_LABLE(n)          ::= "NULL"
+
+//LiteralRef(lit)     ::= "<lit.name>"
+IntRef(i)           ::= "<i.name>"
+FloatRef(f)         ::= "<f.name>"
+VarRef(v)           ::= "<v.name>"
+FIELD_LABLE(f, object) ::= "<object>-><f.name>"
+THIS_LABLE(t)          ::= "this"
+
+//(*(void (*)(T *))(*(t)->clazz->_vtable)[T_foo_SLOT])(((T *)t));
+
+METHOD_CALL_LABLE(m, receiver, receiverType, fptrType, args) ::= <<
+    (*<fptrType>(*(<receiver>)->clazz->_vtable)[<className>_<m.name>_SLOT])((<className> *)(<args:{arg|<arg>};separator=",">))
+>>
+
+INS_METHOD_CALL_LABLE(m, receiver, receiverType, fptrType, args) ::= <<
+    (*<fptrType>(*(<receiver>)->clazz->_vtable)[<className>_<m.name>_SLOT])((<className> *)(<args:{arg|<arg>};separator=",">))
+>>
+
+ClassName(c) ::="<c.name>"
+
+FuncPtrType(f, returnType, argTypes) ::= <<(<returnType> (*)(<argTypes:{argType|<argType>};separator=",">))>>
+TypeCast(cast, type, expr) ::= "((<type>)<expr>)"
